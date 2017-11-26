@@ -22,6 +22,13 @@ enum (<<= 1)
     TFSlotBit_All = 0xFFFFFFFF
 }
 
+enum (<<= 1)
+{
+    ReadDefs_Positive = (1 << 0),
+    ReadDefs_Negative,
+    ReadDefs_All
+}
+
 /*
     Summary:
         Returns the number of times that class has been picked by a player.
@@ -52,6 +59,19 @@ native WPR_GetClassPicks(TFClassType:iClass);
         Number of times that weapon has been picked.
 */
 native WPR_GetWeaponPicks(iItemDefinitionIndex, TFClassType:iClass = TFClass_Unknown, &iSlotBits = 0);
+
+/*
+    All: The total number of times weapons have been picked
+
+    Positive: All ItemDefIndices above -1
+    Negative: All ItemDefIndices below -1 (generally custom weapons)
+
+    TFClass_Unknown means all classes
+    iSlot -1 means all slots
+
+    Else, get the times any weapon has been picked for a specific class in a specific slot.
+*/
+native WPR_GetAllWeaponPicks(iWhichDefs = ReadDefs_All, TFClassType:iClass = TFClass_Unknown, iSlot = -1);
 
 /*
     Summary:
@@ -110,6 +130,7 @@ public __pl_customweaponstf_SetNTVOptional()
 {
     MarkNativeAsOptional("WPR_GetClassPicks");
     MarkNativeAsOptional("WPR_GetWeaponPicks");
+    MarkNativeAsOptional("WPR_GetAllWeaponPicks");
     MarkNativeAsOptional("WPR_SetAutoTracking");
     MarkNativeAsOptional("WPR_IncrementWeaponPicks");
 }

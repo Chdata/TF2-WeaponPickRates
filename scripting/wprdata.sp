@@ -57,6 +57,18 @@ public Plugin:myinfo = {
     url = "http://steamcommunity.com/groups/tf2data"
 };
 
+#if !defined __wprdata_0_included_
+enum (<<= 1)
+{
+    ReadDefs_Positive = (1 << 0),
+    ReadDefs_Negative,
+    ReadDefs_All
+}
+#endif
+
+#define TF_MAX_TRACKED_CLASSES 10
+#define TF_MAX_TRACKED_SLOTS 8
+
 #if !defined DEBUG
 static Handle:g_hDb = INVALID_HANDLE;
 #endif
@@ -96,6 +108,7 @@ public APLRes:AskPluginLoad2(Handle:hSelf, bool:bLate, String:szError[], iErrMax
 
     CreateNative("WPR_GetClassPicks", Native_GetClassPicks);
     CreateNative("WPR_GetWeaponPicks", Native_GetWeaponPicks);
+    CreateNative("WPR_GetAllWeaponPicks", Native_GetAllWeaponPicks);
     CreateNative("WPR_SetAutoTracking", Native_SetAutoTracking);
     CreateNative("WPR_IncrementWeaponPicks", Native_IncrementWeaponPicks);
 
@@ -248,7 +261,7 @@ public Event_TeamplayRoundWin(Handle:hEvent, const String:szName[], bool:bDontBr
             new TFClassType:iClass = TF2_GetPlayerClass(iClient);
             SQL_SaveToDatabase(-1, iClass);
 
-            for (new i = 0; i < 8; i++)
+            for (new i = 0; i < TF_MAX_TRACKED_SLOTS; i++)
             {
                 new iWeapon = GetPlayerWeaponSlot(iClient, i);
                 if (iWeapon == -1)
@@ -318,7 +331,7 @@ public Event_PlayerDeath(Handle:hEvent, const String:szName[], bool:bDontBroadca
         new TFClassType:iClass = TF2_GetPlayerClass(iVictim);
         SQL_SaveToDatabase(-1, iClass);
 
-        for (new i = 0; i < 8; i++)
+        for (new i = 0; i < TF_MAX_TRACKED_SLOTS; i++)
         {
             new iWeapon = GetPlayerWeaponSlot(iVictim, i);
             if (iWeapon == -1)
@@ -405,10 +418,25 @@ public SQL_OnAllDataLoaded(Handle:hOwner, Handle:hHndl, const String:szError[], 
             IntToString(iIndex, szKey, sizeof(szKey));
             SetTrieValue(g_hCacheTrie, szKey, iSlot);
 
-            for (new i = 1; i < 10; i++) // Iterate through the 9 TF2 classes.
+            for (new i = 1; i < TF_MAX_TRACKED_CLASSES; i++) // Iterate through the 9 TF2 classes.
             {
+                new iPicksByClass = SQL_FetchInt(hHndl, i+1);
+
                 Format(szKey, sizeof(szKey), "%i_%i", iIndex, i);
-                SetTrieValue(g_hCacheTrie, szKey, SQL_FetchInt(hHndl, i+1)); // This pretty much outputs our whole row into these tries
+                SetTrieValue(g_hCacheTrie, szKey, iPicksByClass); // This pretty much outputs our whole row into these tries
+
+                if (iIndex != -1)
+                {
+                    Format(szKey, sizeof(szKey), "%i%i_%c", i, iSlot, (iIndex > -1) ? 'p' : 'n');
+
+                    new iTemp = 0;
+                    if (GetTrieValue(g_hCacheTrie, szKey, iTemp))
+                    {
+                        iPicksByClass += iTemp;
+                    }
+
+                    SetTrieValue(g_hCacheTrie, szKey, iPicksByClass);
+                }
             }
         }
     }
@@ -531,6 +559,8 @@ public SQL_CheckIdAndSaveWeaponData(Handle:hOwner, Handle:hHndl, const String:sz
 
                 Cache_SetNumPicks(iItemDefinitionIndex, iClass, iSlotBits, iPicks);
 
+                Cache_AddToAllPicks(iItemDefinitionIndex, iClass, iSlot, iPicks);
+
                 Format(szQuery, sizeof(szQuery), "UPDATE `%s` SET `p%i` = %i, `slot` = %i WHERE `id` = %i",
                     g_szTableName,
                     iClass,
@@ -583,9 +613,33 @@ Cache_SetNumPicks(iItemDefinitionIndex, TFClassType:iClass, iSlotBits, iPicks)
 //         //LogError("WPRData: Somehow, the weapon slot for item %i changed from %i to %i???", iItemDefinitionIndex, iCachedSlot, iSlot);
 //     }
 
-    SetTrieValue(g_hCacheTrie, szKey, iSlotBits, false);
+    SetTrieValue(g_hCacheTrie, szKey, iSlotBits);
 
     Format(szKey, sizeof(szKey), "%i_%i", iItemDefinitionIndex, iClass);
+    SetTrieValue(g_hCacheTrie, szKey, iPicks);
+}
+
+Cache_AddToAllPicks(iItemDefinitionIndex, TFClassType:iClass, iSlot, iPicks)
+{
+    if (iClass == TFClass_Unknown) // We shouldn't be storing data when their class isn't even set yet.
+    {
+        return;
+    }
+
+    if (iItemDefinitionIndex == -1) // This function is not for this purpose.
+    {
+        return;
+    }
+
+    decl String:szKey[32];
+    Format(szKey, sizeof(szKey), "%i%i_%c", iClass, iSlot, (iItemDefinitionIndex > -1) ? 'p' : 'n');
+
+    new iTemp = 0;
+    if (GetTrieValue(g_hCacheTrie, szKey, iTemp))
+    {
+        iPicks += iTemp;
+    }
+
     SetTrieValue(g_hCacheTrie, szKey, iPicks);
 }
 #endif
@@ -621,7 +675,7 @@ Cache_GetNumPicks(iItemDefinitionIndex, TFClassType:iClass = TFClass_Unknown, &i
     else                                                                        // Gets a Weapon Pick Rate.
     {
         new iTemp = 0;
-        for (new i = 1; i < 10; i++)
+        for (new i = 1; i < TF_MAX_TRACKED_CLASSES; i++)
         {
             if (iClass == TFClass_Unknown || TFClassType:i == iClass)
             {
@@ -632,6 +686,95 @@ Cache_GetNumPicks(iItemDefinitionIndex, TFClassType:iClass = TFClass_Unknown, &i
                     iValue += iTemp;
                 }
             }
+        }
+    }
+
+    return iValue;
+}
+
+/*
+    p0_p = 65032    // Times a positive itemdefinition index for pyro in slot 0 has been picked
+    p0_n = 347      // Times a negative itemdefinition index for pyro in slot 0 has been picked
+*/
+Cache_GetAllPicks(iWhichDefs = ReadDefs_All, TFClassType:iClass = TFClass_Unknown, iSlot = -1)
+{
+    if (!iWhichDefs)
+    {
+        LogError("WPR_GetAllWeaponPicks: You must specify which item definition indexes you're reading (iWhichDefs must not be 0).");
+    }
+
+    new iValue = 0;
+
+    if (iWhichDefs & ReadDefs_Positive)
+    {
+        iValue += Cache_GetAllClassPicks(ReadDefs_Positive, iSlot, iClass);
+    }
+
+    if (iWhichDefs & ReadDefs_Negative)
+    {
+        iValue += Cache_GetAllClassPicks(ReadDefs_Negative, iSlot, iClass);
+    }
+
+    return iValue;
+}
+
+Cache_GetAllClassPicks(iWhichDefs, iSlot, TFClassType:iClass)
+{
+    if (iWhichDefs == ReadDefs_All)
+    {
+        LogError("You're using Cache_GetAllClassPicks() incorrectly.");
+        return 0;
+    }
+
+    new iValue = 0;
+
+    if (iClass == TFClass_Unknown)
+    {
+        for (new i = 1; i < TF_MAX_TRACKED_CLASSES; i++) // Loop all 9 classes
+        {
+            iValue += Cache_GetAllSlotPicks(iWhichDefs, iSlot, TFClassType:i);
+        }
+    }
+    else
+    {
+        iValue += Cache_GetAllSlotPicks(iWhichDefs, iSlot, iClass);
+    }
+
+    return iValue;
+}
+
+Cache_GetAllSlotPicks(iWhichDefs, iSlot, TFClassType:iClass)
+{
+    if (iWhichDefs == ReadDefs_All)
+    {
+        LogError("You're using Cache_GetAllSlotPicks() incorrectly.");
+        return 0;
+    }
+
+    decl String:szKey[32];
+
+    new iValue = 0;
+    new iTemp = 0;
+
+    if (iSlot == -1)
+    {
+        for (new s = 0; s < TF_MAX_TRACKED_SLOTS; s++)
+        {
+            Format(szKey, sizeof(szKey), "%i%i_%c", iClass, s, (iWhichDefs == ReadDefs_Positive) ? 'p' : 'n');
+
+            if (GetTrieValue(g_hCacheTrie, szKey, iTemp))
+            {
+                iValue += iTemp;
+            }
+        }
+    }
+    else
+    {
+        Format(szKey, sizeof(szKey), "%i%i_%c", iClass, iSlot, (iWhichDefs == ReadDefs_Positive) ? 'p' : 'n');
+
+        if (GetTrieValue(g_hCacheTrie, szKey, iTemp))
+        {
+            iValue += iTemp;
         }
     }
 
@@ -662,6 +805,18 @@ public Native_GetWeaponPicks(Handle:plugin, numParams)
     SetNativeCellRef(3, iSlot);
 
     return iPicks;
+}
+
+/*
+    WPR_GetAllWeaponPicks(iWhichDefs = ReadDefs_All, TFClassType:iClass = TFClass_Unknown, iSlot = -1)
+*/
+public Native_GetAllWeaponPicks(Handle:plugin, numParams)
+{
+    new iWhichDefs = GetNativeCell(1);
+    new TFClassType:iClass = TFClassType:GetNativeCell(2);
+    new iSlot = GetNativeCell(3);
+
+    return Cache_GetAllPicks(iWhichDefs, iClass, iSlot);
 }
 
 /*
