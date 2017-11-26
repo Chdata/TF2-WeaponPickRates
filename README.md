@@ -58,4 +58,6 @@ Autoexec Config: tf/cfg/sourcemod/ch.wpr.cfg
     
 ## Comments
 
-For logging custom weapon pick rates, I recommend identifying every custom weapon by a negative index lower than -1 to avoid confliction with normal TF2 weapon item definition indexes, and to avoid confliction with index -1, which is used to record the number of times a particular class was picked.
+For logging custom weapon pick rates, I recommend identifying every custom weapon by a negative index lower than -1 to avoid confliction with normal TF2 weapon item definition indexes.
+
+Index -1 should also be avoided for this purpose, as it is used to record the number of times a particular class was picked.
