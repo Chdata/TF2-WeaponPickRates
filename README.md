@@ -11,7 +11,7 @@ MySQL Database for Weapon Pick Rates
  - Ignores bosses from Versus Saxton Hale during automatic logging.
  
 ## Convars:
-Autoexec Config: tf/cfg/ch.wpr.cfg
+Autoexec Config: tf/cfg/sourcemod/ch.wpr.cfg
 
 **cv_wprdata_errorlog** Default: "0" - 1 = log SQL errors | 0 = don't log SQL errors
 
