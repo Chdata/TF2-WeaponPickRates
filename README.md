@@ -23,3 +23,41 @@ Autoexec Config: tf/cfg/sourcemod/ch.wpr.cfg
    Otherwise you'd have to consider making your own, or looking at it through something like phpmyadmin.
    
    I was going to integrate it into my custom weapons plugin and make a menu that only tells me the rates for custom weapons.
+
+## Database Format
+
+    Format for the database is as follows:
+
+    COL: id, slot, name, picks/class
+
+    `id`          is the ItemDefinitionIndex of a weapon
+    `slot`        is the weapon slot of the weapon
+    `p1`          is the number of times it was chosen for Scout
+    `p2`          is the number of times it was chosen for Sniper
+    `p3`          is the number of times it was chosen for Soldier
+    `p4`          is the number of times it was chosen for Demoman
+    `p5`          is the number of times it was chosen for Medic
+    `p6`          is the number of times it was chosen for Heavy
+    `p7`          is the number of times it was chosen for Pyro
+    `p8`          is the number of times it was chosen for Spy
+    `p9`          is the number of times it was chosen for Engineer
+
+    if (`id` == -1) then `p` is the number of times that `class` was chosen.
+
+    Stats are only updated when a player dies or the round ends (in which case you chose the weapon, but didn't necessarily die), because that says the player intentionally chose to play with the loadout they have equipped.
+    As opposed to choosing what they spawn with, where a player can be immediately switching weapons.
+
+    The idea to do it this way came from Youtube, which tries to discern a person intentionally watching a video, versus just quickly opening a window to try and register a view.
+
+    Stats are also updated when the round ends, during which saving stats based on death is disabled.
+
+    Format for the trie is as follows:
+
+    "id"    "slot"   // Weapon slot that weapon is equipped in.
+    "id_1"  "p1"     // Number of times the weapon was picked for that class.
+    
+## Comments
+
+For logging custom weapon pick rates, I recommend identifying every custom weapon by a negative index so that they do not conflict with normal TF2 weapons.
+
+And to also not use -1, which is reserved for the number of times each class was picked.
