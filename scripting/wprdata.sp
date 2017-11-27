@@ -559,7 +559,7 @@ public SQL_CheckIdAndSaveWeaponData(Handle:hOwner, Handle:hHndl, const String:sz
 
                 Cache_SetNumPicks(iItemDefinitionIndex, iClass, iSlotBits, iPicks);
 
-                Cache_AddToAllPicks(iItemDefinitionIndex, iClass, iSlot, iPicks);
+                Cache_AddToAllPicks(iItemDefinitionIndex, iClass, iSlot);
 
                 Format(szQuery, sizeof(szQuery), "UPDATE `%s` SET `p%i` = %i, `slot` = %i WHERE `id` = %i",
                     g_szTableName,
@@ -619,7 +619,7 @@ Cache_SetNumPicks(iItemDefinitionIndex, TFClassType:iClass, iSlotBits, iPicks)
     SetTrieValue(g_hCacheTrie, szKey, iPicks);
 }
 
-Cache_AddToAllPicks(iItemDefinitionIndex, TFClassType:iClass, iSlot, iPicks)
+Cache_AddToAllPicks(iItemDefinitionIndex, TFClassType:iClass, iSlot)
 {
     if (iClass == TFClass_Unknown) // We shouldn't be storing data when their class isn't even set yet.
     {
@@ -634,13 +634,14 @@ Cache_AddToAllPicks(iItemDefinitionIndex, TFClassType:iClass, iSlot, iPicks)
     decl String:szKey[32];
     Format(szKey, sizeof(szKey), "%i%i_%c", iClass, iSlot, (iItemDefinitionIndex > -1) ? 'p' : 'n');
 
+    new iPicks = 0;
     new iTemp = 0;
     if (GetTrieValue(g_hCacheTrie, szKey, iTemp))
     {
-        iPicks += iTemp;
+        iPicks = iTemp;
     }
 
-    SetTrieValue(g_hCacheTrie, szKey, iPicks);
+    SetTrieValue(g_hCacheTrie, szKey, iPicks + 1);
 }
 #endif
 
