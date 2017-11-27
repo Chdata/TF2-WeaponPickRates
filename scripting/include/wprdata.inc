@@ -114,7 +114,7 @@ stock WPR_SetPluginTracking(bool:bOn)
 */
 native WPR_IncrementWeaponPicks(iItemDefinitionIndex, TFClassType:iClass, iSlot = -1);
 
-public SharedPlugin:__pl_customweaponstf = 
+public SharedPlugin:__pl_wprdata = 
 {
     name = "wprdata",
     file = "wprdata.smx",
@@ -126,7 +126,7 @@ public SharedPlugin:__pl_customweaponstf =
 };
 
 #if !defined REQUIRE_PLUGIN
-public __pl_customweaponstf_SetNTVOptional()
+public __pl_wprdata_SetNTVOptional()
 {
     MarkNativeAsOptional("WPR_GetClassPicks");
     MarkNativeAsOptional("WPR_GetWeaponPicks");
