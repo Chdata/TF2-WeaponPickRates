@@ -413,10 +413,10 @@ public SQL_OnAllDataLoaded(Handle:hOwner, Handle:hHndl, const String:szError[], 
         while (SQL_FetchRow(hHndl))
         {
             new iIndex = SQL_FetchInt(hHndl, 0);
-            new iSlot = SQL_FetchInt(hHndl, 1);
+            new iSlotBits = SQL_FetchInt(hHndl, 1);
 
             IntToString(iIndex, szKey, sizeof(szKey));
-            SetTrieValue(g_hCacheTrie, szKey, iSlot);
+            SetTrieValue(g_hCacheTrie, szKey, iSlotBits);
 
             for (new i = 1; i < TF_MAX_TRACKED_CLASSES; i++) // Iterate through the 9 TF2 classes.
             {
@@ -427,12 +427,13 @@ public SQL_OnAllDataLoaded(Handle:hOwner, Handle:hHndl, const String:szError[], 
 
                 if (iIndex != -1)
                 {
-                    Format(szKey, sizeof(szKey), "%i%i_%c", i, iSlot, (iIndex > -1) ? 'p' : 'n');
+                    Format(szKey, sizeof(szKey), "%i%i_%c", i, iSlotBits, (iIndex > -1) ? 'p' : 'n');
 
                     new iTemp = 0;
                     if (GetTrieValue(g_hCacheTrie, szKey, iTemp))
                     {
                         iPicksByClass += iTemp;
+                        //LogMessage("%s %i + %i = %i idx %i", szKey, iTemp, iPicksByClass-iTemp, iPicksByClass, iIndex);
                     }
 
                     SetTrieValue(g_hCacheTrie, szKey, iPicksByClass);
@@ -704,6 +705,8 @@ Cache_GetAllPicks(iWhichDefs = ReadDefs_All, TFClassType:iClass = TFClass_Unknow
         LogError("WPR_GetAllWeaponPicks: You must specify which item definition indexes you're reading (iWhichDefs must not be 0).");
     }
 
+    iSlot = 1<<iSlot; // It needs to be converted to a slot bit to be read properly.
+
     new iValue = 0;
 
     if (iWhichDefs & ReadDefs_Positive)
@@ -776,6 +779,8 @@ Cache_GetAllSlotPicks(iWhichDefs, iSlot, TFClassType:iClass)
         if (GetTrieValue(g_hCacheTrie, szKey, iTemp))
         {
             iValue += iTemp;
+
+            //LogMessage("%s %i + %i = %i", szKey, iTemp, iValue-iTemp, iValue);
         }
     }
 
