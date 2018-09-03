@@ -705,8 +705,11 @@ Cache_GetAllPicks(iWhichDefs = ReadDefs_All, TFClassType:iClass = TFClass_Unknow
         LogError("WPR_GetAllWeaponPicks: You must specify which item definition indexes you're reading (iWhichDefs must not be 0).");
     }
 
-    iSlot = 1<<iSlot; // It needs to be converted to a slot bit to be read properly.
-
+    if (iSlot > -1)
+    {
+        iSlot = 1<<iSlot; // It needs to be converted to a slot bit to be read properly.
+    }
+    
     new iValue = 0;
 
     if (iWhichDefs & ReadDefs_Positive)
@@ -722,7 +725,7 @@ Cache_GetAllPicks(iWhichDefs = ReadDefs_All, TFClassType:iClass = TFClass_Unknow
     return iValue;
 }
 
-Cache_GetAllClassPicks(iWhichDefs, iSlot, TFClassType:iClass)
+Cache_GetAllClassPicks(iWhichDefs, iSlotBits, TFClassType:iClass)
 {
     if (iWhichDefs == ReadDefs_All)
     {
@@ -736,18 +739,18 @@ Cache_GetAllClassPicks(iWhichDefs, iSlot, TFClassType:iClass)
     {
         for (new i = 1; i < TF_MAX_TRACKED_CLASSES; i++) // Loop all 9 classes
         {
-            iValue += Cache_GetAllSlotPicks(iWhichDefs, iSlot, TFClassType:i);
+            iValue += Cache_GetAllSlotPicks(iWhichDefs, iSlotBits, TFClassType:i);
         }
     }
     else
     {
-        iValue += Cache_GetAllSlotPicks(iWhichDefs, iSlot, iClass);
+        iValue += Cache_GetAllSlotPicks(iWhichDefs, iSlotBits, iClass);
     }
 
     return iValue;
 }
 
-Cache_GetAllSlotPicks(iWhichDefs, iSlot, TFClassType:iClass)
+Cache_GetAllSlotPicks(iWhichDefs, iSlotBits, TFClassType:iClass)
 {
     if (iWhichDefs == ReadDefs_All)
     {
@@ -760,7 +763,7 @@ Cache_GetAllSlotPicks(iWhichDefs, iSlot, TFClassType:iClass)
     new iValue = 0;
     new iTemp = 0;
 
-    if (iSlot == -1)
+    if (iSlotBits == -1)
     {
         for (new s = 0; s < TF_MAX_TRACKED_SLOTS; s++)
         {
@@ -774,7 +777,7 @@ Cache_GetAllSlotPicks(iWhichDefs, iSlot, TFClassType:iClass)
     }
     else
     {
-        Format(szKey, sizeof(szKey), "%i%i_%c", iClass, iSlot, (iWhichDefs == ReadDefs_Positive) ? 'p' : 'n');
+        Format(szKey, sizeof(szKey), "%i%i_%c", iClass, iSlotBits, (iWhichDefs == ReadDefs_Positive) ? 'p' : 'n');
 
         if (GetTrieValue(g_hCacheTrie, szKey, iTemp))
         {
