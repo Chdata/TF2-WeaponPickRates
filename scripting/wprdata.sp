@@ -409,6 +409,7 @@ public SQL_OnAllDataLoaded(Handle:hOwner, Handle:hHndl, const String:szError[], 
     }
     else 
     {
+        ClearTrie(g_hCacheTrie);
         decl String:szKey[32];
         while (SQL_FetchRow(hHndl))
         {
